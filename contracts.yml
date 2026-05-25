@@ -1,0 +1,46 @@
+# contracts.yml — data contract
+#
+# Declares what this domain PRODUCES (objects external consumers depend on)
+# and what it CONSUMES (objects produced by other domains/ETLs).
+#
+# Read and aggregated by Snowflake-Administration/contracts/ to produce a
+# cross-repo index and detect drift against INFORMATION_SCHEMA.
+#
+# Update this file IN THE SAME PR as any change that affects the contract:
+#   - column additions / removals / renames / type changes
+#   - new tables, deprecated tables
+#   - changes to procedure output shape (if external consumers parse it)
+
+domain: <DOMAIN_NAME>
+primary_database: <PRIMARY_DB>
+version: 1
+
+# ---------------------------------------------------------------------------
+# Objects this domain produces for external consumers.
+#
+# contract_level:
+#   stable        — column additions allowed; renames/removals/type changes
+#                   require coordination with consumers
+#   evolving      — shape may change in any minor way; consumers should
+#                   expect to update
+#   experimental  — anything can change; consumers depend at their own risk
+# ---------------------------------------------------------------------------
+produces:
+  # - object: <PRIMARY_DB>.<PRIMARY_SCHEMA>.EXAMPLE_TABLE
+  #   type: table
+  #   description: One-line description of what this represents.
+  #   contract_level: stable
+  #   refresh: daily                              # or hourly, on-demand, etc.
+  #   columns:
+  #     - { name: id,         type: NUMBER,   nullable: false, notes: "stable identifier" }
+  #     - { name: name,       type: VARCHAR,  nullable: false }
+  #     - { name: created_at, type: TIMESTAMP_NTZ, nullable: false }
+
+# ---------------------------------------------------------------------------
+# Objects this domain consumes from other domains/ETLs.
+# ---------------------------------------------------------------------------
+consumes:
+  # - object: RL_<SOURCE>.<schema>.<table>
+  #   producer: <source-etl-repo-name>            # which repo owns the producer
+  #   columns_used: [col_a, col_b, col_c]         # only the columns we actually read
+  #   expected_freshness: hourly                  # how fresh we expect this to be

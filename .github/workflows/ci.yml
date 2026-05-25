@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  pull_request:
+    paths:
+      - 'sql/**'
+      - 'grants/**'
+      - '.github/workflows/ci.yml'
+      - '.sqlfluff'
+  push:
+    branches: [main]
+    paths:
+      - 'sql/**'
+      - 'grants/**'
+
+jobs:
+  lint:
+    name: sqlfluff lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install sqlfluff
+        run: pip install sqlfluff
+
+      - name: Lint sql/ and grants/
+        run: |
+          sqlfluff lint sql/ grants/ \
+            --dialect snowflake \
+            --disable-progress-bar

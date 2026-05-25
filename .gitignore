@@ -1,0 +1,26 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python (for any ai/session/ scripts)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local-only ai/session/ working files (uncomment if needed per repo)
+# ai/session/*.local.*
+
+# Local notes (uncomment if needed per repo)
+# *.local.md

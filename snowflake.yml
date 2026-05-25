@@ -1,0 +1,27 @@
+# snowflake.yml — contract document
+#
+# This file is NOT consumed by any deploy automation. It declares what this
+# domain expects Snowflake-Administration to have provisioned before any
+# script in this repo will succeed.
+#
+# Reviewers use this during PR review to confirm dependencies.
+# New developers use this during First Steps to know what to request.
+
+domain: <DOMAIN_NAME>                       # e.g. il-customers — short, kebab-case identifier
+primary_database: <PRIMARY_DB>              # e.g. IL_Customers — gets {ENV}_ prefix at runtime
+
+schemas:
+  - <PRIMARY_SCHEMA>                        # e.g. PUBLIC
+
+# Secondary databases this domain writes into (PL targets, shared databases).
+# This repo owns specific schemas inside them.
+secondary_databases:
+  # - database: PL_DOMO
+  #   schemas: [<DOMAIN_NAME>]              # one schema per domain inside shared PL DBs
+
+# Roles that must pre-exist (owned by Snowflake-Administration)
+required_roles:
+  - <PRIMARY_DB>_WRITER                     # used by developers running scripts
+  - <PRIMARY_DB>_READER                     # used by downstream consumers
+
+default_warehouse: WH_INTEGRATION           # change per domain if needed
