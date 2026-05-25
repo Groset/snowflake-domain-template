@@ -1,0 +1,14 @@
+# Files excluded from sqlfluff lint.
+#
+# The example/placeholder files below contain literal <PRIMARY_DB> and
+# <PRIMARY_SCHEMA> tokens that aren't valid Snowflake identifiers, so
+# sqlfluff cannot parse them. INIT.md substitutes the tokens during
+# domain personalization, after which these files lint clean — at that
+# point delete this entire file (INIT.md does that automatically) so
+# lint covers every real SQL file in the repo.
+
+sql/public/procedures/SP_EXAMPLE.sql
+sql/public/functions/UDF_EXAMPLE.sql
+sql/public/tables/EXAMPLE_TABLE.sql
+sql/public/views/vw_example.sql
+grants/example_grant_to_reader.sql

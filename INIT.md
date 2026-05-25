@@ -80,7 +80,7 @@ Before any edits, summarize for the user:
   and `.sql` outside `.git/`, plus `INIT.md` itself which will be deleted).
 - Whether `sql/public/` will be renamed (yes, if the primary schema is
   not `PUBLIC` — rename to `sql/<schema-lowercased>/`).
-- That `INIT.md` will be deleted at the end.
+- That `INIT.md` and `.sqlfluffignore` will both be deleted at the end.
 
 Then ask "Proceed?" via AskUserQuestion. Don't edit anything until they
 confirm.
