@@ -19,9 +19,24 @@ secondary_databases:
   # - database: PL_DOMO
   #   schemas: [<DOMAIN_NAME>]              # one schema per domain inside shared PL DBs
 
-# Roles that must pre-exist (owned by Snowflake-Administration)
+# Roles used by this repo. All three are account-wide — owned by
+# Snowflake-Administration. There are no per-domain WRITER/READER roles.
+#
+#   DAGSTER_DEV_ROLE   — owns every DEV object. Developers use this role
+#                        when running scripts in DEV so ownership stays
+#                        consistent across the team (any dev can modify
+#                        any DEV object).
+#   DAGSTER_PRD_ROLE   — owns every PRD object. Used for DEPLOYMENT to
+#                        production — both manual rollouts under this role
+#                        and the production Dagster service account run
+#                        under it. Day-to-day development does not use it.
+#   BSL_DEFAULT_ROLE   — general developer role. Reads from PRD; reads
+#                        and writes in DEV. Use this for browsing /
+#                        exploring; switch to DAGSTER_DEV_ROLE when
+#                        creating objects you want the team to own.
 required_roles:
-  - <PRIMARY_DB>_WRITER                     # used by developers running scripts
-  - <PRIMARY_DB>_READER                     # used by downstream consumers
+  - DAGSTER_DEV_ROLE
+  - DAGSTER_PRD_ROLE
+  - BSL_DEFAULT_ROLE
 
-default_warehouse: WH_INTEGRATION           # change per domain if needed
+default_warehouse: COMPUTE_WH               # change per domain if needed

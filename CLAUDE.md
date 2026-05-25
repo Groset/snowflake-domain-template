@@ -71,17 +71,24 @@ tables → functions → views → procedures → grants
 
 ### Connections
 
-Set up two named connections in the Snowflake VSCode extension:
-- `DEV_<DOMAIN>` — role `<PRIMARY_DB>_WRITER`, database `DEV_<PRIMARY_DB>`
-- `PRD_<DOMAIN>` — role `<PRIMARY_DB>_WRITER`, database `PRD_<PRIMARY_DB>`
+Set up Snowflake VSCode extension connections like this:
 
-Switch via the status bar **before** running anything.
+| Connection | Role | Database | Who uses it |
+|------------|------|----------|-------------|
+| `DEV_<DOMAIN>` | `DAGSTER_DEV_ROLE` | `DEV_<PRIMARY_DB>` | Every developer running scripts in DEV |
+| `PRD_<DOMAIN>` | `DAGSTER_PRD_ROLE` | `PRD_<PRIMARY_DB>` | **Deployment** — used to roll changes out to production |
+
+Why `DAGSTER_DEV_ROLE` and not your personal role for DEV: objects you create are owned by the role you ran under. Using `DAGSTER_DEV_ROLE` means every DEV object is owned by the same role, so any developer on the team can modify any object without permission errors.
+
+`BSL_DEFAULT_ROLE` is your general "browsing" role — it can read from PRD and read/write in DEV. Use it for exploring; switch to `DAGSTER_DEV_ROLE` when creating objects you want the team to own.
+
+Switch the connection via the status bar **before** running anything.
 
 ### PR → DEV → PRD flow
 
 1. Feature branch + PR → review → merge to main.
-2. After merge: connect to DEV, run all changed files in the recommended order.
-3. After verification: switch connection to PRD, repeat.
+2. After merge: connect to DEV (`DAGSTER_DEV_ROLE`), run all changed files in the recommended order.
+3. PRD deployment: changes are rolled out either by running the scripts under `DAGSTER_PRD_ROLE`, or by the production Dagster instance picking the change up on its next scheduled run (when applicable). PRD deployment is treated as a release step, distinct from day-to-day development.
 
 CI only lints SQL syntax. It does not deploy.
 
@@ -98,11 +105,11 @@ This repo follows the Groset `ai/` convention.
 
 ### With Snowflake-Administration
 
-These must pre-exist before any deploy succeeds. Request via a Snowflake-Administration PR if missing:
+These must pre-exist before any script in this repo runs. Request via a Snowflake-Administration PR if missing:
 
-- Database: `DEV_<PRIMARY_DB>` and `PRD_<PRIMARY_DB>`
+- Databases: `DEV_<PRIMARY_DB>` and `PRD_<PRIMARY_DB>`
 - Schemas: as listed in `snowflake.yml`
-- Role: `<PRIMARY_DB>_WRITER` (deploy), `<PRIMARY_DB>_READER` (consumers)
+- Grants on the new databases/schemas to `DAGSTER_DEV_ROLE`, `DAGSTER_PRD_ROLE`, and `BSL_DEFAULT_ROLE` (the account-wide roles already exist — no per-domain roles are created)
 - Warehouse: as configured in `snowflake.yml`
 
 ### With consumers (data contract)
@@ -116,7 +123,9 @@ The aggregator in `Snowflake-Administration/contracts/` reads every domain's `co
 Do these in order. Each step is small and verifiable.
 
 ### 1. Personalize the template
-Run `./bin/init.sh` (or `./bin/init.ps1`) and answer the prompts (domain name, primary database, primary schema). The script substitutes placeholders across this CLAUDE.md, README.md, snowflake.yml, contracts.yml, and the example SQL files.
+Ask Claude (or any AI coding agent) to **"follow `INIT.md`"**. It will propose smart defaults from the folder/git context, confirm three values with you (domain name, primary database, primary schema), substitute placeholders across every template file, and delete `INIT.md` when done.
+
+If you don't have an agent available, `INIT.md` is human-readable — do the same substitutions by hand.
 
 ### 2. Confirm Snowflake-Administration has provisioned your domain
 DB, schemas, and roles must exist in DEV **and** PRD. See `snowflake.yml` for the full list. Open a Snowflake-Administration PR if anything is missing.

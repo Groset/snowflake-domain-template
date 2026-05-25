@@ -12,12 +12,16 @@ This template contains the conventions, folder layout, AI working agreements, an
 
 1. On the GitHub page for this template, click **Use this template** → **Create a new repository**.
 2. Clone the new repo locally.
-3. Run the personalization script:
-   - **Git Bash / WSL / Linux / macOS**: `./bin/init.sh`
-   - **PowerShell**: `./bin/init.ps1`
-4. Follow the prompts (domain name, primary database, primary schema).
-5. Commit the personalization changes.
-6. Open `CLAUDE.md` and work through the **First Steps** checklist.
+3. Open the repo in Claude Code (or your AI coding agent of choice) and ask it to **"follow `INIT.md`"** (or "run init", "personalize the template" — anything natural). Claude will:
+   - Read `INIT.md` for instructions
+   - Propose defaults based on the folder/repo name
+   - Ask you to confirm the domain name, primary database, and primary schema
+   - Substitute the placeholders across every template file
+   - Delete `INIT.md` when done
+4. Commit the personalization changes.
+5. Open `CLAUDE.md` and work through the rest of **First Steps**.
+
+There is no fallback script. If you don't have an AI agent available, `INIT.md` is human-readable — you can do the same substitutions by hand (search-replace `<DOMAIN_NAME>`, `<PRIMARY_DB>`, `<PRIMARY_SCHEMA>` across all `.md`/`.yml`/`.sql` files).
 
 ---
 
