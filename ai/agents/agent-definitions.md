@@ -22,7 +22,9 @@ NAMING & PLACEMENT:
   ALLCAPS_SNAKE for tables
 - File name matches object name (one object per file)
 - File is in the correct folder for its category
-  (procedures/, functions/, views/, tables/)
+  (sql/<db>/<schema>/procedures, .../functions, .../views, .../tables)
+- The <db> path segment matches the un-prefixed database name (no DEV_/
+  PRD_) and is lowercase
 - Object is in the correct schema for its purpose
 
 DDL CORRECTNESS:
@@ -36,8 +38,19 @@ DDL CORRECTNESS:
   tables.
 - Every file has a complete header comment:
   -- File / Object / Purpose / Returns / Called by
+  The -- Object: line uses the fully-qualified DB.SCHEMA.NAME form for
+  documentation, even though the CREATE statement itself omits the DB.
 - Statements terminate cleanly; no trailing GO / unterminated blocks
-- Fully-qualified names used for cross-database / cross-schema references
+
+DB QUALIFICATION (env portability):
+- CREATE / GRANT statements use <schema>.NAME only — no DB prefix. The
+  session's default DB (set by the VSCode connection) supplies it. This
+  is what lets the same file deploy to DEV and PRD unmodified.
+- Cross-DB references (procedure body reading from RL_FINANCE etc.) MUST
+  be fully qualified — Snowflake won't auto-prefix.
+- A CREATE statement that fully-qualifies its own DB (e.g. CREATE TABLE
+  IL_CUSTOMERS.public.X) is a code smell — the file probably belongs in
+  a different sql/<db>/ folder. FLAG and suggest moving.
 
 CONSISTENCY:
 - Coding style matches surrounding files

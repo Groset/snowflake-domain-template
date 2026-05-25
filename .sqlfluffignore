@@ -7,8 +7,8 @@
 # point delete this entire file (INIT.md does that automatically) so
 # lint covers every real SQL file in the repo.
 
-sql/public/procedures/SP_EXAMPLE.sql
-sql/public/functions/UDF_EXAMPLE.sql
-sql/public/tables/EXAMPLE_TABLE.sql
-sql/public/views/vw_example.sql
+sql/_primary_db_/public/procedures/SP_EXAMPLE.sql
+sql/_primary_db_/public/functions/UDF_EXAMPLE.sql
+sql/_primary_db_/public/tables/EXAMPLE_TABLE.sql
+sql/_primary_db_/public/views/vw_example.sql
 grants/example_grant_to_reader.sql

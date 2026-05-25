@@ -12,7 +12,7 @@ This template contains the conventions, folder layout, AI working agreements, an
 
 1. On the GitHub page for this template, click **Use this template** → **Create a new repository**.
 2. Clone the new repo locally.
-3. Open the repo in Claude Code (or your AI coding agent of choice) and ask it to **"follow `INIT.md`"** (or "run init", "personalize the template" — anything natural). Claude will:
+3. Open the repo in Claude Code and ask it to **"follow `INIT.md`"** (or "run init", "personalize the template" — anything natural). Claude will:
    - Read `INIT.md` for instructions
    - Propose defaults based on the folder/repo name
    - Ask you to confirm the domain name, primary database, and primary schema
@@ -31,10 +31,10 @@ There is no fallback script. If you don't have an AI agent available, `INIT.md` 
 |------|---------|
 | `snowflake.yml` | Contract document — what Snowflake-Administration must provision before this repo deploys |
 | `contracts.yml` | Declarative data contract — what this domain produces and consumes |
-| `sql/<schema>/procedures/` | `CREATE OR REPLACE PROCEDURE` files |
-| `sql/<schema>/functions/`  | `CREATE OR REPLACE FUNCTION` files |
-| `sql/<schema>/views/`      | `CREATE OR REPLACE VIEW` files |
-| `sql/<schema>/tables/`     | `CREATE TABLE IF NOT EXISTS` files |
+| `sql/<db>/<schema>/procedures/` | `CREATE OR REPLACE PROCEDURE` files |
+| `sql/<db>/<schema>/functions/`  | `CREATE OR REPLACE FUNCTION` files |
+| `sql/<db>/<schema>/views/`      | `CREATE OR REPLACE VIEW` files |
+| `sql/<db>/<schema>/tables/`     | `CREATE OR REPLACE TABLE` files (see CONVENTIONS.md for the historical-table exception) |
 | `grants/` | Grants on objects this repo owns |
 | `ai/agents/` | Subagent role prompts tuned for this domain |
 | `ai/context/` | Long-lived reference material (summary-paired with raw where large) |

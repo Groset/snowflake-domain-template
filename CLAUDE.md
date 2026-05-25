@@ -26,10 +26,10 @@ This repo's scope ends at SQL DDL. There is **no automated deploy** — develope
 |------|---------|
 | `snowflake.yml` | Contract with Snowflake-Administration — what must pre-exist |
 | `contracts.yml` | Data contract — what this domain produces and consumes |
-| `sql/<schema>/procedures/` | `CREATE OR REPLACE PROCEDURE` files |
-| `sql/<schema>/functions/` | `CREATE OR REPLACE FUNCTION` files |
-| `sql/<schema>/views/` | `CREATE OR REPLACE VIEW` files |
-| `sql/<schema>/tables/` | `CREATE OR REPLACE TABLE` files (or `CREATE TABLE IF NOT EXISTS` for historical / non-rebuildable tables — see CONVENTIONS.md) |
+| `sql/<db>/<schema>/procedures/` | `CREATE OR REPLACE PROCEDURE` files |
+| `sql/<db>/<schema>/functions/` | `CREATE OR REPLACE FUNCTION` files |
+| `sql/<db>/<schema>/views/` | `CREATE OR REPLACE VIEW` files |
+| `sql/<db>/<schema>/tables/` | `CREATE OR REPLACE TABLE` files (or `CREATE TABLE IF NOT EXISTS` for historical / non-rebuildable tables — see CONVENTIONS.md) |
 | `grants/` | Grants on objects this repo owns |
 | `ai/agents/` | Subagent role prompts (tune per-domain) |
 | `ai/context/` | Long-lived reference material |
@@ -54,6 +54,7 @@ See `CONVENTIONS.md` for the full set.
 - **Tables (default)**: `CREATE OR REPLACE TABLE`. Same model as procedures/views — the file is canonical shape. Safe because almost every table in this repo is rebuilt by a `CREATE OR REPLACE` / `INSERT OVERWRITE` bulk process.
 - **Tables (historical exception)**: a small number of tables hold data that can't be reconstructed (long-lived history, manually-curated rows). These use `CREATE TABLE IF NOT EXISTS` and must be documented in `ai/context/` or an `ai/features/` entry. See CONVENTIONS.md *Historical / non-rebuildable tables* for the full rule.
 - **Grants**: deployed last; this repo only grants on objects it owns.
+- **Folder == connection**: each `sql/<db>/` folder corresponds to a VSCode Snowflake connection whose default database is `<db>`. Object definitions inside use `<schema>.NAME` (no DB prefix) — the session supplies the database. The same file deploys to DEV and PRD by switching connection. See CONVENTIONS.md *DB qualification in object bodies* for the full rule.
 
 ### Recommended manual run order
 

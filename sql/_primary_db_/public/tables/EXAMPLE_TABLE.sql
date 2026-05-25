@@ -8,7 +8,7 @@
 --     and add: -- Population: historical — do not re-run in PRD
 --     See CONVENTIONS.md *Historical / non-rebuildable tables*.
 
-CREATE OR REPLACE TABLE <PRIMARY_DB>.<PRIMARY_SCHEMA>.EXAMPLE_TABLE (
+CREATE OR REPLACE TABLE <PRIMARY_SCHEMA>.EXAMPLE_TABLE (
     id          NUMBER       NOT NULL,
     name        VARCHAR(255) NOT NULL,
     created_at  TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),

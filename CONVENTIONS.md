@@ -41,14 +41,33 @@ The header is the first thing a reviewer reads. Keep it accurate.
 
 ## Folder placement
 
-Object goes in `sql/<schema>/<category>/`:
+Object goes in `sql/<db>/<schema>/<category>/`:
 
 - `procedures/` — `CREATE OR REPLACE PROCEDURE`
 - `functions/` — `CREATE OR REPLACE FUNCTION`
 - `views/` — `CREATE OR REPLACE VIEW`
 - `tables/` — `CREATE OR REPLACE TABLE` (default). See *Historical / non-rebuildable tables* below for the exception.
 
+The `<db>` folder is the **un-prefixed** database name (e.g. `il_customers`, not `DEV_IL_Customers`). Folder names lowercase. Each `<db>` folder corresponds to a VSCode Snowflake connection whose default database is that DB — for the primary DB you'll have one DEV and one PRD connection (`DEV_<DOMAIN>`, `PRD_<DOMAIN>`); for any secondary DBs (e.g. `pl_domo/`) you'll set up additional connections.
+
 Grants go in `grants/`, one file per logical grant set.
+
+## DB qualification in object bodies
+
+Object definitions and grants in this repo are **environment-portable**: the same file deploys to both DEV and PRD unmodified. Environment is supplied by the VSCode connection (role + default DB), not by tokens in the file.
+
+To preserve that property:
+
+- **Inside a CREATE/GRANT statement that targets the session's default DB**: use `<schema>.NAME` only. No DB qualifier. Examples:
+  ```sql
+  CREATE OR REPLACE TABLE public.example_table (...);
+  GRANT USAGE ON SCHEMA public TO ROLE BSL_DEFAULT_ROLE;
+  ```
+- **Inside a CREATE/GRANT statement that targets a different DB than the session default** (rare — would only happen if a procedure body writes cross-DB): fully qualify, `<OTHER_DB>.<schema>.NAME`. Treat this as a smell — usually the file should live in `sql/<other_db>/` instead, so the session naturally defaults to that DB.
+- **Reads or references inside a procedure body**:
+  - Same DB as the session → `<schema>.NAME` (or unqualified for the default schema).
+  - Different DB (cross-DB consume, e.g. reading from `RL_FINANCE`) → fully qualified `<OTHER_DB>.<schema>.NAME`. This is the one place env-awareness leaks into file bodies — env-prefixed source DBs need a substitution mechanism. For now, write the name as it should appear at runtime in the target environment and flag the file as env-specific. We'll formalize a pattern when the first cross-DB consume lands.
+- **`-- Object:` header**: keep the fully-qualified `<PRIMARY_DB>.<PRIMARY_SCHEMA>.NAME` form. The header is documentation — a reviewer wants the canonical address at a glance, not the implicit form that depends on session state.
 
 ## DDL patterns
 

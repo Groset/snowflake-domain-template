@@ -4,7 +4,7 @@
 -- Returns: VARIANT JSON with keys: status, rows_processed
 -- Called by: manual (replace with calling asset / SP when wired up)
 
-CREATE OR REPLACE PROCEDURE <PRIMARY_DB>.<PRIMARY_SCHEMA>.SP_EXAMPLE()
+CREATE OR REPLACE PROCEDURE <PRIMARY_SCHEMA>.SP_EXAMPLE()
 RETURNS VARIANT
 LANGUAGE SQL
 AS
@@ -14,7 +14,7 @@ DECLARE
 BEGIN
     -- Replace this body with the real procedure logic.
     SELECT COUNT(*) INTO :rows_processed
-      FROM <PRIMARY_DB>.<PRIMARY_SCHEMA>.EXAMPLE_TABLE;
+      FROM <PRIMARY_SCHEMA>.EXAMPLE_TABLE;
 
     RETURN OBJECT_CONSTRUCT(
         'status',         'success',

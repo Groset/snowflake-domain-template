@@ -78,8 +78,10 @@ Before any edits, summarize for the user:
 - The three chosen values.
 - The set of files that will be modified (every `.md`, `.yml`, `.yaml`,
   and `.sql` outside `.git/`, plus `INIT.md` itself which will be deleted).
-- Whether `sql/public/` will be renamed (yes, if the primary schema is
-  not `PUBLIC` — rename to `sql/<schema-lowercased>/`).
+- That `sql/_primary_db_/` will be renamed to `sql/<primary_db_lowercased>/` (always).
+- Whether the schema folder will also be renamed (yes, if the primary
+  schema is not `PUBLIC` — rename `public/` to `<schema-lowercased>/`
+  inside the DB folder).
 - That `INIT.md` be deleted at the end.
 
 Then ask "Proceed?" via AskUserQuestion. Don't edit anything until they
@@ -96,10 +98,14 @@ and not under `.git/`:
 - Replace every `<PRIMARY_SCHEMA>` → user's primary schema.
 - Write the file back.
 
-If the primary schema is not `PUBLIC` (case-insensitive), rename:
+Rename the placeholder folder structure to match the chosen values. The template ships with `sql/_primary_db_/public/<category>/...`; after personalization it should be `sql/<primary_db_lowercased>/<primary_schema_lowercased>/<category>/...`.
+
+Two renames, both lowercase:
 
 ```
-sql/public/  →  sql/<primary_schema_lowercased>/
+sql/_primary_db_/  →  sql/<primary_db_lowercased>/        (always)
+sql/<primary_db_lowercased>/public/  →
+    sql/<primary_db_lowercased>/<primary_schema_lowercased>/   (only if schema != PUBLIC, case-insensitive)
 ```
 
 (Use `git mv` if the repo is a git repo, otherwise a plain move.)

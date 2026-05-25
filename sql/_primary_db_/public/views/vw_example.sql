@@ -5,10 +5,10 @@
 -- Returns: rows from EXAMPLE_TABLE with derived columns.
 -- Called by: downstream BI / other domains
 
-CREATE OR REPLACE VIEW <PRIMARY_DB>.<PRIMARY_SCHEMA>.vw_example AS
+CREATE OR REPLACE VIEW <PRIMARY_SCHEMA>.vw_example AS
 SELECT
     id,
     name,
-    <PRIMARY_DB>.<PRIMARY_SCHEMA>.UDF_EXAMPLE(name) AS name_normalized,
+    <PRIMARY_SCHEMA>.UDF_EXAMPLE(name) AS name_normalized,
     created_at
-FROM <PRIMARY_DB>.<PRIMARY_SCHEMA>.EXAMPLE_TABLE;
+FROM <PRIMARY_SCHEMA>.EXAMPLE_TABLE;

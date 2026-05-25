@@ -15,6 +15,13 @@ domain: <DOMAIN_NAME>
 primary_database: <PRIMARY_DB>
 version: 1
 
+# Secondary databases this domain owns schemas in (PL targets, shared DBs).
+# Mirrors `snowflake.yml`. Objects produced or consumed inside these DBs
+# should appear in `produces:` / `consumes:` below with their fully-qualified
+# names (the DB part included).
+secondary_databases:
+  # - PL_DOMO
+
 # ---------------------------------------------------------------------------
 # Objects this domain produces for external consumers.
 #
