@@ -1,10 +1,11 @@
--- File: V_EXAMPLE.sql
--- Object: <PRIMARY_DB>.<PRIMARY_SCHEMA>.V_EXAMPLE
+-- File: vw_example.sql
+-- Object: <PRIMARY_DB>.<PRIMARY_SCHEMA>.vw_example
+--   (written lowercase here; Snowflake stores it as VW_EXAMPLE)
 -- Purpose: Example view illustrating the file convention.
 -- Returns: rows from EXAMPLE_TABLE with derived columns.
 -- Called by: downstream BI / other domains
 
-CREATE OR REPLACE VIEW <PRIMARY_DB>.<PRIMARY_SCHEMA>.V_EXAMPLE AS
+CREATE OR REPLACE VIEW <PRIMARY_DB>.<PRIMARY_SCHEMA>.vw_example AS
 SELECT
     id,
     name,

@@ -29,7 +29,7 @@ This repo's scope ends at SQL DDL. There is **no automated deploy** — develope
 | `sql/<schema>/procedures/` | `CREATE OR REPLACE PROCEDURE` files |
 | `sql/<schema>/functions/` | `CREATE OR REPLACE FUNCTION` files |
 | `sql/<schema>/views/` | `CREATE OR REPLACE VIEW` files |
-| `sql/<schema>/tables/` | `CREATE TABLE IF NOT EXISTS` files |
+| `sql/<schema>/tables/` | `CREATE OR REPLACE TABLE` files (or `CREATE TABLE IF NOT EXISTS` for historical / non-rebuildable tables — see CONVENTIONS.md) |
 | `grants/` | Grants on objects this repo owns |
 | `ai/agents/` | Subagent role prompts (tune per-domain) |
 | `ai/context/` | Long-lived reference material |
@@ -40,7 +40,7 @@ This repo's scope ends at SQL DDL. There is **no automated deploy** — develope
 
 - Procedures: `SP_<VERB>_<NOUN>` — `SP_BUILD_CUSTOMER_360`
 - Functions: `UDF_<PURPOSE>` — `UDF_NORMALIZE_PHONE`
-- Views: `V_<NOUN>` — `V_CUSTOMER_LATEST`
+- Views: `vw_<noun>` — `vw_customer_latest` (lowercase in source; Snowflake folds it to `VW_CUSTOMER_LATEST` in storage — do **not** use quoted identifiers)
 - Tables: ALLCAPS_SNAKE — `CUSTOMER_TRANSACTION`
 - File name matches object name: `SP_BUILD_CUSTOMER_360.sql`
 
@@ -50,8 +50,9 @@ See `CONVENTIONS.md` for the full set.
 
 **No automated deploy.** Developers run `.sql` files from VSCode against a chosen Snowflake connection.
 
-- **Stateless objects** (procedures, functions, views): `CREATE OR REPLACE` every run. Git history *is* the version history.
-- **Tables**: `CREATE TABLE IF NOT EXISTS` files represent the table's *initial* shape. Subsequent column changes are run as ad-hoc `ALTER` statements via VSCode — **and the matching `tables/<name>.sql` file is updated in the same PR** so git reflects current shape. Reviewers should flag drift.
+- **Stateless objects** (procedures, functions, views): `CREATE OR REPLACE` every run. The file is the canonical definition; git history *is* the version history.
+- **Tables (default)**: `CREATE OR REPLACE TABLE`. Same model as procedures/views — the file is canonical shape. Safe because almost every table in this repo is rebuilt by a `CREATE OR REPLACE` / `INSERT OVERWRITE` bulk process.
+- **Tables (historical exception)**: a small number of tables hold data that can't be reconstructed (long-lived history, manually-curated rows). These use `CREATE TABLE IF NOT EXISTS` and must be documented in `ai/context/` or an `ai/features/` entry. See CONVENTIONS.md *Historical / non-rebuildable tables* for the full rule.
 - **Grants**: deployed last; this repo only grants on objects it owns.
 
 ### Recommended manual run order
@@ -159,14 +160,18 @@ A small change end-to-end: PR → review → merge → DEV deploy → PRD deploy
 ## Adding a New Object
 
 - **Procedure / function / view**: drop the `.sql` file in the right folder, run it via VSCode.
-- **New table**: drop a `CREATE TABLE IF NOT EXISTS` file in `tables/`, run it.
-- **Existing table needs a column**: run the `ALTER` directly via VSCode against the target connection, then update the table's `.sql` file to match in the same PR.
+- **New table (default)**: drop a `CREATE OR REPLACE TABLE` file in `tables/`, run it.
+- **New table (historical / non-rebuildable)**: use `CREATE TABLE IF NOT EXISTS`, add `-- Population: historical — do not re-run in PRD` to the header, and document the table in `ai/context/` or an `ai/features/` entry. See CONVENTIONS.md.
+- **Existing table needs a column**:
+  - *Rebuildable table*: edit the `.sql` file and re-run it (the `CREATE OR REPLACE` is non-destructive in this case because the table is rebuilt anyway).
+  - *Historical table*: run the `ALTER` directly via VSCode, then update the table's `.sql` file to match in the same PR.
 
 ## When to Ask Before Acting
 
 - **Any PRD deploy** — always coordinate with the other dev.
 - **Always confirm the VSCode Snowflake connection before clicking ▶.** A misclicked PRD connection is the biggest risk in this repo.
 - **Destructive migrations**: `DROP COLUMN`, `DROP TABLE`, type narrowing, anything that loses data.
+- **`CREATE OR REPLACE TABLE` against a historical table** — this drops all data. The SQL reviewer agent should already flag this; double-check before clicking ▶ on PRD.
 - **Backfills**: run them in a controlled session, not as part of a multi-file batch.
 - **Contract-breaking changes**: removing a produced column, renaming an object — these affect downstream consumers. Surface the impact via `contracts.yml` before merging.
 
@@ -175,7 +180,7 @@ A small change end-to-end: PR → review → merge → DEV deploy → PRD deploy
 - [ ] All changed SQL files run cleanly against DEV.
 - [ ] `sqlfluff lint sql/` passes (CI will check).
 - [ ] If `contracts.yml` changed, the change is reviewed.
-- [ ] If a table's shape changed, the matching `tables/<name>.sql` file reflects the new shape.
+- [ ] The matching `tables/<name>.sql` file reflects the current shape (canonical for rebuildable tables; updated alongside ad-hoc `ALTER` for historical tables).
 - [ ] If upstream/downstream relationships changed, `ai/context/upstream.md` or `downstream.md` is updated.
 - [ ] PR description links any cross-repo PRs (Snowflake-Administration grants, SF-Orchestration parsers).
 

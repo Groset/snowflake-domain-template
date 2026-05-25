@@ -18,7 +18,8 @@ As a SQL DDL Reviewer for this Snowflake domain repo, evaluate:
 
 NAMING & PLACEMENT:
 - Object names follow CONVENTIONS.md patterns:
-  SP_<VERB>_<NOUN>, UDF_<PURPOSE>, V_<NOUN>, ALLCAPS_SNAKE for tables
+  SP_<VERB>_<NOUN>, UDF_<PURPOSE>, vw_<noun> (lowercase),
+  ALLCAPS_SNAKE for tables
 - File name matches object name (one object per file)
 - File is in the correct folder for its category
   (procedures/, functions/, views/, tables/)
@@ -26,7 +27,13 @@ NAMING & PLACEMENT:
 
 DDL CORRECTNESS:
 - Procedures, functions, views use CREATE OR REPLACE
-- Tables use CREATE TABLE IF NOT EXISTS — never CREATE OR REPLACE TABLE
+- Tables use CREATE OR REPLACE TABLE by default (the file is canonical
+  shape). The exception is historical / non-rebuildable tables, which
+  use CREATE TABLE IF NOT EXISTS and carry a header line:
+    -- Population: historical — do not re-run in PRD
+  The exception must be documented in ai/context/ or an ai/features/
+  entry. See safety-reviewer for the check that catches misclassified
+  tables.
 - Every file has a complete header comment:
   -- File / Object / Purpose / Returns / Called by
 - Statements terminate cleanly; no trailing GO / unterminated blocks
@@ -56,11 +63,34 @@ DESTRUCTIVE OPERATIONS — FLAG IMMEDIATELY:
 - NOT NULL constraints added to columns that may have NULLs
 - Removal or rename of indexes / primary keys / unique constraints
 
-TABLE FILE DRIFT:
-- If a tables/<name>.sql file changed, does the change describe an
-  ALTER that was already run in PRD, or a new initial-creation?
-- If the table exists in PRD, the file should NOT change in a way
-  that would CREATE a different shape — only annotate current shape.
+TABLE DDL SAFETY — the biggest risk in this repo:
+- Default for tables/<name>.sql is CREATE OR REPLACE TABLE. That's
+  safe ONLY when the table is rebuilt every run by a procedure
+  (CREATE OR REPLACE TABLE inside the SP, or INSERT OVERWRITE).
+  Running CREATE OR REPLACE TABLE against a table that's
+  incrementally populated will drop all production data.
+
+  For each changed tables/<name>.sql that uses CREATE OR REPLACE TABLE:
+
+  1. Check ai/context/ and ai/features/**/planning.md for an explicit
+     statement about this table's population pattern. If documented
+     as "rebuildable" / "rebuilt by SP X" / similar — safe.
+  2. If undocumented, do static analysis across sql/**/procedures/
+     for either of these references to the table name:
+       - CREATE OR REPLACE TABLE <name>
+       - INSERT OVERWRITE INTO <name>
+     If found — safe (rebuildable). If not found — TREAT AS
+     HISTORICAL and FLAG: the file should either be switched to
+     CREATE TABLE IF NOT EXISTS with a "-- Population: historical"
+     header, OR the rebuild process should be documented and added
+     to procedures/. Ask the human which.
+  3. If the file header declares "-- Population: historical" but
+     uses CREATE OR REPLACE TABLE, that's a contradiction — FLAG.
+
+- For tables using CREATE TABLE IF NOT EXISTS (historical):
+  the file should reflect current shape. A change to the file
+  describes an ALTER that was already (or will be) run in PRD —
+  the CREATE TABLE statement itself is a no-op there.
 
 GRANT SAFETY:
 - Grants only on objects this repo owns (per snowflake.yml)

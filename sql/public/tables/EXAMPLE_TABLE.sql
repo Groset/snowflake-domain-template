@@ -2,11 +2,13 @@
 -- Object: <PRIMARY_DB>.<PRIMARY_SCHEMA>.EXAMPLE_TABLE
 -- Purpose: Example base table illustrating the file convention.
 -- Notes:
---   * Use CREATE TABLE IF NOT EXISTS — this file is for initial creation.
---   * For ongoing schema changes, run ALTER ad-hoc via VSCode AND update
---     this file in the same PR so it reflects current shape.
+--   * Default DDL is CREATE OR REPLACE TABLE — the file is the canonical shape.
+--   * This is safe because rebuildable tables are repopulated by an SP each run.
+--   * For historical / non-rebuildable tables, switch to CREATE TABLE IF NOT EXISTS
+--     and add: -- Population: historical — do not re-run in PRD
+--     See CONVENTIONS.md *Historical / non-rebuildable tables*.
 
-CREATE TABLE IF NOT EXISTS <PRIMARY_DB>.<PRIMARY_SCHEMA>.EXAMPLE_TABLE (
+CREATE OR REPLACE TABLE <PRIMARY_DB>.<PRIMARY_SCHEMA>.EXAMPLE_TABLE (
     id          NUMBER       NOT NULL,
     name        VARCHAR(255) NOT NULL,
     created_at  TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
