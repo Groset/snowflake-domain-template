@@ -19,12 +19,12 @@ As a SQL DDL Reviewer for this Snowflake domain repo, evaluate:
 NAMING & PLACEMENT:
 - Object names follow CONVENTIONS.md patterns:
   SP_<VERB>_<NOUN>, UDF_<PURPOSE>, vw_<noun> (lowercase),
-  ALLCAPS_SNAKE for tables
-- File name matches object name (one object per file)
-- File is in the correct folder for its category
-  (sql/<db>/<schema>/procedures, .../functions, .../views, .../tables)
-- The <db> path segment matches the un-prefixed database name (no DEV_/
-  PRD_) and is lowercase
+  SEED_<NOUN>, ALLCAPS_SNAKE for tables
+- File name matches the object name (one object per file)
+- File is under sql/<db>/<schema>/... — the <db> folder is the env-
+  prefixed DEV name (e.g. dev_il_finance), lowercase. Below schema,
+  organization is the domain's choice — flat, by feature, by category,
+  by purpose. No specific subfolder is required.
 - Object is in the correct schema for its purpose
 
 DDL CORRECTNESS:
@@ -36,21 +36,24 @@ DDL CORRECTNESS:
   The exception must be documented in ai/context/ or an ai/features/
   entry. See safety-reviewer for the check that catches misclassified
   tables.
+- Seed-data scripts (SEED_*.sql) use MERGE or guarded INSERT — not bare
+  INSERT (must be idempotent — they re-run on every deploy).
 - Every file has a complete header comment:
   -- File / Object / Purpose / Returns / Called by
-  The -- Object: line uses the fully-qualified DB.SCHEMA.NAME form for
-  documentation, even though the CREATE statement itself omits the DB.
+  The -- Object: line uses the fully-qualified DEV_<DB>.<schema>.NAME
+  form, matching the CREATE statement.
 - Statements terminate cleanly; no trailing GO / unterminated blocks
 
-DB QUALIFICATION (env portability):
-- CREATE / GRANT statements use <schema>.NAME only — no DB prefix. The
-  session's default DB (set by the VSCode connection) supplies it. This
-  is what lets the same file deploy to DEV and PRD unmodified.
-- Cross-DB references (procedure body reading from RL_FINANCE etc.) MUST
-  be fully qualified — Snowflake won't auto-prefix.
-- A CREATE statement that fully-qualifies its own DB (e.g. CREATE TABLE
-  IL_CUSTOMERS.public.X) is a code smell — the file probably belongs in
-  a different sql/<db>/ folder. FLAG and suggest moving.
+DEV-HARDCODED RULE (the big one):
+- Every database reference in a source file must be DEV_-prefixed.
+- No PRD_ references in source — those only exist in the assembled
+  deploy-prd/ tree (which is gitignored).
+- No implicit-DB forms (CREATE OR REPLACE TABLE public.X without DB
+  prefix) — those depend on session context and break the assembler.
+- Cross-DB references inside SP bodies, view bodies, etc. are all
+  DEV_<OTHER_DB>.schema.name — literal, fully qualified.
+- An AI authoring code in this repo MUST use DEV_ prefixes throughout.
+  The PRD substitution is the assembler's job, not the author's.
 
 CONSISTENCY:
 - Coding style matches surrounding files
@@ -88,15 +91,16 @@ TABLE DDL SAFETY — the biggest risk in this repo:
   1. Check ai/context/ and ai/features/**/planning.md for an explicit
      statement about this table's population pattern. If documented
      as "rebuildable" / "rebuilt by SP X" / similar — safe.
-  2. If undocumented, do static analysis across sql/**/procedures/
-     for either of these references to the table name:
+  2. If undocumented, do static analysis across all files under sql/
+     for either of these references to the table name (inside SP
+     bodies — identifiable by CREATE OR REPLACE PROCEDURE in the
+     file):
        - CREATE OR REPLACE TABLE <name>
        - INSERT OVERWRITE INTO <name>
      If found — safe (rebuildable). If not found — TREAT AS
      HISTORICAL and FLAG: the file should either be switched to
      CREATE TABLE IF NOT EXISTS with a "-- Population: historical"
-     header, OR the rebuild process should be documented and added
-     to procedures/. Ask the human which.
+     header, OR a rebuild SP should be added. Ask the human which.
   3. If the file header declares "-- Population: historical" but
      uses CREATE OR REPLACE TABLE, that's a contradiction — FLAG.
 

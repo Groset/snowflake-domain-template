@@ -13,6 +13,11 @@
 .DS_Store
 Thumbs.db
 
+# Assembled deploy bundles — regenerated each deploy from source.
+# See ai/context/deployment.md.
+deploy-prd/
+deploy-dev/
+
 # Python (for any ai/session/ scripts)
 __pycache__/
 *.pyc

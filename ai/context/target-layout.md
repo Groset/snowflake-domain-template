@@ -1,42 +1,64 @@
 # Target Layout
 
-This domain's structure inside Snowflake: schemas, naming, and the recommended manual run order.
+This domain's structure inside Snowflake (what objects live where) and the repo's source organization. For deployment mechanics, see [`deployment.md`](deployment.md).
 
-## Database & schemas
+## In Snowflake
 
 ```
-{ENV}_<PRIMARY_DB>
+DEV_<PRIMARY_DB>                ← also exists as PRD_<PRIMARY_DB>
 └── <PRIMARY_SCHEMA>
-    ├── procedures   ← CREATE OR REPLACE on every run
-    ├── functions    ← CREATE OR REPLACE on every run
-    ├── views        ← CREATE OR REPLACE on every run
-    └── tables       ← CREATE TABLE IF NOT EXISTS (drift-prone; review carefully)
+    ├── procedures   ← CREATE OR REPLACE every deploy
+    ├── functions    ← CREATE OR REPLACE every deploy
+    ├── views        ← CREATE OR REPLACE every deploy
+    └── tables       ← CREATE OR REPLACE TABLE by default;
+                        CREATE TABLE IF NOT EXISTS for historical /
+                        non-rebuildable tables (documented exception)
 ```
 
 <!-- Add secondary databases / schemas here if this domain writes elsewhere,
-     e.g. into a PL presentation database. -->
+     e.g. into a PL presentation database like PL_DOMO. -->
+
+## In the source repo
+
+```
+sql/
+  dev_<primary_db>/                ← env-prefixed, lowercase. After INIT.md.
+    <primary_schema>/
+      <files organized however the domain prefers>
+        EXAMPLE_TABLE.sql
+        UDF_EXAMPLE.sql
+        vw_example.sql
+        SP_EXAMPLE.sql
+        SEED_REGIONS.sql           ← if any
+grants/
+  <files>.sql                      ← grants on this domain's objects
+```
+
+Files below `<schema>/` can be flat, grouped by feature, by purpose, or by category — domain's choice. The deploy assembler classifies by filename prefix (`SP_`, `UDF_`, `vw_`, `SEED_`) and CREATE statement, not by folder name.
+
+Every database reference in a source file is `DEV_*`-prefixed. PRD versions are produced by the assembler at deploy time — see [`deployment.md`](deployment.md).
 
 ## Naming
 
-See [`/CONVENTIONS.md`](../../CONVENTIONS.md) for the full naming reference.
-Summary:
+See [`/CONVENTIONS.md`](../../CONVENTIONS.md) for the full reference. Summary:
 
-| Type | Pattern |
-|------|---------|
-| Procedure | `SP_<VERB>_<NOUN>` |
-| Function | `UDF_<PURPOSE>` |
-| View | `V_<NOUN>` |
-| Table | ALLCAPS_SNAKE |
+| Type | Pattern | Example |
+|------|---------|---------|
+| Procedure | `SP_<VERB>_<NOUN>` | `SP_BUILD_CUSTOMER_360` |
+| Function | `UDF_<PURPOSE>` | `UDF_NORMALIZE_PHONE` |
+| View | `vw_<noun>` (lowercase) | `vw_customer_latest` |
+| Table | `ALLCAPS_SNAKE` | `CUSTOMER_TRANSACTION` |
+| Seed | `SEED_<NOUN>` | `SEED_REGIONS` |
 
-## Recommended manual run order
+## Recommended manual run order (DEV)
 
-When deploying multiple changed files to DEV or PRD, run in this order so that downstream objects always see their dependencies:
+When running multiple changed source files in DEV via VSCode, run in this order so downstream objects see their dependencies:
 
 ```
-tables  →  functions  →  views  →  procedures  →  grants
+tables  →  functions  →  views  →  procedures  →  seed  →  grants
 ```
 
-Rationale: tables hold the data; functions are used inside views and procedures; views may be used inside procedures; procedures are the leaf operational objects; grants come last so they cover whatever was just (re-)created.
+The assembler applies the same order automatically when bundling for PRD.
 
 ## Drift detection
 

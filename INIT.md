@@ -78,7 +78,7 @@ Before any edits, summarize for the user:
 - The three chosen values.
 - The set of files that will be modified (every `.md`, `.yml`, `.yaml`,
   and `.sql` outside `.git/`, plus `INIT.md` itself which will be deleted).
-- That `sql/_primary_db_/` will be renamed to `sql/<primary_db_lowercased>/` (always).
+- That `sql/_primary_db_/` will be renamed to `sql/dev_<primary_db_lowercased>/` (always — note the `dev_` prefix added).
 - Whether the schema folder will also be renamed (yes, if the primary
   schema is not `PUBLIC` — rename `public/` to `<schema-lowercased>/`
   inside the DB folder).
@@ -98,14 +98,14 @@ and not under `.git/`:
 - Replace every `<PRIMARY_SCHEMA>` → user's primary schema.
 - Write the file back.
 
-Rename the placeholder folder structure to match the chosen values. The template ships with `sql/_primary_db_/public/<category>/...`; after personalization it should be `sql/<primary_db_lowercased>/<primary_schema_lowercased>/<category>/...`.
+Rename the placeholder folder structure to match the chosen values. The template ships with `sql/_primary_db_/public/...`; after personalization it should be `sql/dev_<primary_db_lowercased>/<primary_schema_lowercased>/...`.
 
-Two renames, both lowercase:
+Two renames, both lowercase. Note the `dev_` prefix is added to the DB folder name — source files in this repo are DEV-hardcoded.
 
 ```
-sql/_primary_db_/  →  sql/<primary_db_lowercased>/        (always)
-sql/<primary_db_lowercased>/public/  →
-    sql/<primary_db_lowercased>/<primary_schema_lowercased>/   (only if schema != PUBLIC, case-insensitive)
+sql/_primary_db_/  →  sql/dev_<primary_db_lowercased>/        (always)
+sql/dev_<primary_db_lowercased>/public/  →
+    sql/dev_<primary_db_lowercased>/<primary_schema_lowercased>/   (only if schema != PUBLIC, case-insensitive)
 ```
 
 (Use `git mv` if the repo is a git repo, otherwise a plain move.)

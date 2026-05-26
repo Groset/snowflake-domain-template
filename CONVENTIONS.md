@@ -2,6 +2,28 @@
 
 Naming, file-header, and review standards for this domain repo.
 
+This document is also the **AI authoring guide**: an AI agent writing or reviewing SQL in this repo should follow these rules without exception. The same conventions that make AI-generated deploy bundles correct (clean headers, consistent naming, one object per file) make AI-authored code correct.
+
+## Source files are DEV-hardcoded
+
+Every database reference in a `.sql` file in this repo points at DEV. Files run as-is against DEV via VSCode; for PRD, AI assembles a separate deploy bundle (see `ai/context/deployment.md`) that substitutes `DEV_` → `PRD_` and reorganizes by deploy role.
+
+In practice:
+
+```sql
+-- ✓ Correct
+CREATE OR REPLACE TABLE DEV_IL_Finance.public.EXAMPLE_TABLE ( ... );
+SELECT * FROM DEV_RL_Sage.public.transactions;
+
+-- ✗ Wrong — implicit DB
+CREATE OR REPLACE TABLE public.EXAMPLE_TABLE ( ... );
+
+-- ✗ Wrong — hardcoded PRD (will fail the deploy assembler's safety check)
+CREATE OR REPLACE TABLE PRD_IL_Finance.public.EXAMPLE_TABLE ( ... );
+```
+
+The file is the source of truth for DEV. The assembled `deploy-prd/` bundle is the source of truth for PRD.
+
 ## Object naming
 
 | Object type | Pattern | Example |
@@ -10,6 +32,7 @@ Naming, file-header, and review standards for this domain repo.
 | Function (UDF) | `UDF_<PURPOSE>` | `UDF_NORMALIZE_PHONE` |
 | View | `vw_<noun>` | `vw_customer_latest` |
 | Table | ALLCAPS_SNAKE | `CUSTOMER_TRANSACTION` |
+| Seed-data script | `SEED_<NOUN>` | `SEED_REGIONS` |
 | Stage | `STG_<PURPOSE>` | `STG_CUSTOMER_LANDING` |
 | Stream | `STR_<NOUN>` | `STR_CUSTOMER_CHANGES` |
 | Task | `TSK_<VERB>_<NOUN>` | `TSK_REFRESH_CUSTOMER_360` |
@@ -23,62 +46,46 @@ All object names UPPER_SNAKE **except views**, which are written `vw_<noun>` in 
 The file name **must match the object name** with a `.sql` extension:
 
 - `SP_BUILD_CUSTOMER_360.sql` defines `SP_BUILD_CUSTOMER_360`.
-- One object per file.
+- One object per file. This matters more than ever — the deploy assembler classifies and orders files individually, so combining objects in one file breaks dependency detection.
 
 ## File header
 
-Every `.sql` file starts with a header comment:
+Every `.sql` file starts with a header comment. The assembler relies on this header — keep it accurate:
 
 ```sql
 -- File: SP_BUILD_CUSTOMER_360.sql
--- Object: <PRIMARY_DB>.<SCHEMA>.SP_BUILD_CUSTOMER_360
+-- Object: DEV_<PRIMARY_DB>.<schema>.SP_BUILD_CUSTOMER_360
 -- Purpose: <one line — what this does, not how>
 -- Returns: <shape, e.g. "VARIANT JSON with keys: status, rows, duration_s">
 -- Called by: <orchestration asset name, downstream SP name, or "manual">
+-- Deploy role: DAGSTER_PRD_ROLE     (optional — this is the default)
 ```
 
-The header is the first thing a reviewer reads. Keep it accurate.
+The `-- Object:` line uses the fully-qualified DEV form (matches the CREATE statement below). The optional `-- Deploy role:` line lets a file declare a non-default deploy role.
 
 ## Folder placement
 
-Object goes in `sql/<db>/<schema>/<category>/`:
+Required structure: `sql/<db>/<schema>/...`
 
-- `procedures/` — `CREATE OR REPLACE PROCEDURE`
-- `functions/` — `CREATE OR REPLACE FUNCTION`
-- `views/` — `CREATE OR REPLACE VIEW`
-- `tables/` — `CREATE OR REPLACE TABLE` (default). See *Historical / non-rebuildable tables* below for the exception.
+- `<db>` — the env-prefixed Snowflake database name, lowercase folder (e.g. `dev_il_finance/`).
+- `<schema>` — the schema name, lowercase (e.g. `public/`).
+- Below schema: **organize however suits the domain.** Flat, by feature, by purpose, by category — the template doesn't prescribe. The deploy assembler infers object kind from the filename prefix (`SP_`, `UDF_`, `vw_`, `SEED_`, otherwise table) and from the CREATE statement, not from folder name.
 
-The `<db>` folder is the **un-prefixed** database name (e.g. `il_customers`, not `DEV_IL_Customers`). Folder names lowercase. Each `<db>` folder corresponds to a VSCode Snowflake connection whose default database is that DB — for the primary DB you'll have one DEV and one PRD connection (`DEV_<DOMAIN>`, `PRD_<DOMAIN>`); for any secondary DBs (e.g. `pl_domo/`) you'll set up additional connections.
+Grants go in `grants/` at the repo root — one file per logical grant set. They're a separate deploy-role concern (often deployed under a different role than the DDL).
 
-Grants go in `grants/`, one file per logical grant set.
-
-## DB qualification in object bodies
-
-Object definitions and grants in this repo are **environment-portable**: the same file deploys to both DEV and PRD unmodified. Environment is supplied by the VSCode connection (role + default DB), not by tokens in the file.
-
-To preserve that property:
-
-- **Inside a CREATE/GRANT statement that targets the session's default DB**: use `<schema>.NAME` only. No DB qualifier. Examples:
-  ```sql
-  CREATE OR REPLACE TABLE public.example_table (...);
-  GRANT USAGE ON SCHEMA public TO ROLE BSL_DEFAULT_ROLE;
-  ```
-- **Inside a CREATE/GRANT statement that targets a different DB than the session default** (rare — would only happen if a procedure body writes cross-DB): fully qualify, `<OTHER_DB>.<schema>.NAME`. Treat this as a smell — usually the file should live in `sql/<other_db>/` instead, so the session naturally defaults to that DB.
-- **Reads or references inside a procedure body**:
-  - Same DB as the session → `<schema>.NAME` (or unqualified for the default schema).
-  - Different DB (cross-DB consume, e.g. reading from `RL_FINANCE`) → fully qualified `<OTHER_DB>.<schema>.NAME`. This is the one place env-awareness leaks into file bodies — env-prefixed source DBs need a substitution mechanism. For now, write the name as it should appear at runtime in the target environment and flag the file as env-specific. We'll formalize a pattern when the first cross-DB consume lands.
-- **`-- Object:` header**: keep the fully-qualified `<PRIMARY_DB>.<PRIMARY_SCHEMA>.NAME` form. The header is documentation — a reviewer wants the canonical address at a glance, not the implicit form that depends on session state.
+If this domain also owns objects in a secondary database (e.g. a schema inside `PL_DOMO`), add `sql/dev_pl_domo/<schema>/...` as a parallel tree.
 
 ## DDL patterns
 
 - **Procedures / functions / views**: always `CREATE OR REPLACE`. The file is the canonical definition.
-- **Tables (default)**: `CREATE OR REPLACE TABLE`. The file is the canonical shape — same model as procedures and views. Safe because almost every table in this repo is rebuilt by a `CREATE OR REPLACE` / `INSERT OVERWRITE` bulk process.
+- **Tables (default)**: `CREATE OR REPLACE TABLE`. The file is the canonical shape. Safe because almost every table in this repo is rebuilt by a `CREATE OR REPLACE` / `INSERT OVERWRITE` bulk process.
 - **Tables (historical exception)**: `CREATE TABLE IF NOT EXISTS`. See below.
+- **Seed data**: prefer idempotent `MERGE INTO` over blind `INSERT`. Seed scripts re-run on every deploy.
 - **Grants**: idempotent (`GRANT` is naturally idempotent in Snowflake) — safe to re-run.
 
 ### Historical / non-rebuildable tables
 
-A small number of tables hold data that **cannot be reconstructed from source** — long-lived historical records, snapshot accumulations, manually-curated rows, anything where re-running the file in PRD would lose data.
+A small number of tables hold data that **cannot be reconstructed from source** — long-lived historical records, snapshot accumulations, manually-curated rows, anything where re-running the file would lose data.
 
 Rules for these tables:
 
@@ -87,24 +94,29 @@ Rules for these tables:
 3. Add a header line in the `.sql` file: `-- Population: historical — do not re-run in PRD`.
 4. Column changes are still applied via ad-hoc `ALTER` in VSCode; the `.sql` file is updated in the same PR to reflect current shape.
 
-The SQL reviewer agent (see `ai/agents/agent-definitions.md`) is responsible for catching tables that should be in this category but aren't — see the *safety-reviewer* role for the detection logic.
+The SQL reviewer agent (see `ai/agents/agent-definitions.md`) is responsible for catching tables that should be in this category but aren't.
+
+## Deployment
+
+- **DEV**: developer runs source files directly via VSCode connected to `DEV_<DOMAIN>`. No assembly. Recommended manual run order: tables → functions → views → procedures → grants.
+- **PRD**: AI agent assembles `deploy-prd/<role>/...` from source, substituting `DEV_` → `PRD_` and bundling by `(role, process_step)`. Deployer then runs the bundled files in PRD. Full process in [`ai/context/deployment.md`](ai/context/deployment.md).
 
 ## PR review checklist
 
-A reviewer should be able to answer YES to all of these before approving:
+A reviewer (human or AI) should be able to answer YES to all of these before approving:
 
+- [ ] Every database reference in source files is `DEV_*`. No `PRD_*`, no implicit-DB forms.
 - [ ] File names match object names; one object per file.
-- [ ] Every file has a complete header comment.
+- [ ] Every file has a complete header comment (File / Object / Purpose / Returns / Called by).
 - [ ] Stateless objects (SPs, UDFs, views) use `CREATE OR REPLACE`.
 - [ ] Tables use `CREATE OR REPLACE TABLE` unless the table is historical / non-rebuildable, in which case `CREATE TABLE IF NOT EXISTS` is used and the exception is documented in `ai/context/` or an `ai/features/` entry.
 - [ ] No destructive operations slipped in (`DROP`, `TRUNCATE`, type narrowing) without explicit reviewer awareness.
-- [ ] No `CREATE OR REPLACE TABLE` is being deployed to PRD against a table that's incrementally populated and has no rebuild process — that would drop production data.
-- [ ] The matching `tables/<name>.sql` file reflects the current shape.
+- [ ] Seed-data scripts use idempotent `MERGE` or guarded inserts, not bare `INSERT`.
 - [ ] If an SP's output shape changed, the producer flagged it and the corresponding `contracts.yml` entry is updated.
 - [ ] If new external dependencies were introduced, `contracts.yml` `consumes:` is updated.
 - [ ] If new outputs were exposed, `contracts.yml` `produces:` is updated.
 - [ ] Grants only touch objects this repo owns.
-- [ ] `sqlfluff lint sql/` passes (CI confirms).
+- [ ] `sqlfluff lint sql/ grants/` passes (CI confirms).
 
 ## When the SP output changes
 
